@@ -1,6 +1,9 @@
 -- 01_schema.sql
--- Ejecutar TODO de una vez (incluye tabla origen + modelo simple)
-
+/*
+En este archivo se crearán tanto el Schema de la base de datos donde se importarán los datos de un csv con datos reales
+sobre puntos de interes turisticos (Pois) con la finalidad de realizar un EDA finalizar para comprender u analizar los datos.
+Este archivo se puede ejecutar de una sola vez
+*/
 CREATE DATABASE IF NOT EXISTS `pois`;
 USE `pois`;
 
@@ -8,27 +11,22 @@ DROP TABLE IF EXISTS `pois_22_12`;
 
 CREATE TABLE `pois_22_12` (
   `id` BIGINT PRIMARY KEY,
-  `name` TEXT,
+  `name` MEDIUMTEXT,
   `country_latitude` DOUBLE,
   `country_longitude` DOUBLE,
-  `city` TEXT,
+  `city` MEDIUMTEXT,
   `city_latitude` DOUBLE,
   `city_longitude` DOUBLE,
-  `poi` TEXT,
+  `poi` MEDIUMTEXT,
   `poi_latitude` DOUBLE,
   `poi_longitude` DOUBLE,
-  `category` TEXT,
-  `subcategory` TEXT,
-  `value_en` TEXT
+  `category` MEDIUMTEXT,
+  `subcategory` MEDIUMTEXT,
+  `value_en` MEDIUMTEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
--- Ajuste de columnas de texto para evitar Error 1406 (Data too long)
-ALTER TABLE `pois_22_12`
-  MODIFY `name` MEDIUMTEXT,
-  MODIFY `city` MEDIUMTEXT,
-  MODIFY `poi` MEDIUMTEXT,
-  MODIFY `category` MEDIUMTEXT,
-  MODIFY `subcategory` MEDIUMTEXT,
-  MODIFY `value_en` MEDIUMTEXT;
+  
+-- Realizamos un drop de todas las tablas con la condición "IF EXISTS" para que las elimine si esta misma se cumple
+-- Los realizo todos seguidos y en orden para que no haya problemas de eliminación en cascada por Foreign Keys
 DROP TABLE IF EXISTS `fact_poi_activity`;
 DROP TABLE IF EXISTS `dim_poi`;
 DROP TABLE IF EXISTS `dim_subcategory`;
@@ -36,6 +34,7 @@ DROP TABLE IF EXISTS `dim_category`;
 DROP TABLE IF EXISTS `dim_city`;
 DROP TABLE IF EXISTS `dim_country`;
 
+-- Posteriormente creamos todas las tablas con sus valores y constraints necesarios.
 CREATE TABLE `dim_country` (
   `country_id` INT PRIMARY KEY AUTO_INCREMENT,
   `country_name` VARCHAR(100) NOT NULL UNIQUE,
