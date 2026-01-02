@@ -15,6 +15,11 @@ JOIN dim_subcategory as s ON c.category_id=s.category_id ;
 SELECT COUNT(*) FROM fact_poi_activity;
 -- 5000 POIs tienen actividad, es normal ya que se puso como limite 5000 en la creación de esta tabla
 
+-- ¿Cuántos POIs no tienen actividad registrada?
+SELECT COUNT(*) AS  pois_sin_actividad FROM dim_poi dm
+LEFT JOIN fact_poi_activity fpa ON dm.poi_id = fpa.poi_id
+WHERE fpa.poi_id IS NULL;
+
 -- ¿Hay POIs sin categoría o sin subcategoría?
 SELECT * FROM pois_22_12
 WHERE category IS NULL OR subcategory IS NULL;
@@ -124,3 +129,84 @@ INNER JOIN fact_poi_activity fpa ON dp.poi_id = fpa.poi_id
 GROUP BY dc.category_id, dc.category_name
 HAVING AVG(fpa.avg_rating) < 3.75 AND SUM(fpa.visits) >= 10000
 ORDER BY num_visitas DESC;
+
+-- BLOQUE 4 — Análisis temporal (MONTH / YEAR)
+-- ¿Cómo se distribuye la actividad a lo largo del año?
+SELECT
+  MONTH(fpa.activity_date) AS mes,
+  SUM(fpa.visits) AS total_visitas
+FROM fact_poi_activity fpa
+GROUP BY MONTH(fpa.activity_date)
+ORDER BY mes;
+-- ¿Qué meses concentran más visitas?
+SELECT
+  MONTH(fpa.activity_date) AS mes,
+  CASE
+	WHEN MONTH(fpa.activity_date) = 1 THEN 'Enero'
+    WHEN MONTH(fpa.activity_date) = 2 THEN 'Febrero'
+    WHEN MONTH(fpa.activity_date) = 3 THEN 'Marzo'
+    WHEN MONTH(fpa.activity_date) = 4 THEN 'Abril'
+    WHEN MONTH(fpa.activity_date) = 5 THEN 'Mayo'
+    WHEN MONTH(fpa.activity_date) = 6 THEN 'Junio'
+    WHEN MONTH(fpa.activity_date) = 7 THEN 'Julio'
+    WHEN MONTH(fpa.activity_date) = 8 THEN 'Agosto'
+    WHEN MONTH(fpa.activity_date) = 9 THEN 'Septiembre'
+    WHEN MONTH(fpa.activity_date) = 10 THEN 'Octubre'
+    WHEN MONTH(fpa.activity_date) = 11 THEN 'Noviembre'
+    WHEN MONTH(fpa.activity_date) = 12 THEN 'Diciembre'
+    ELSE 'Fuera del rango'
+  END AS nombre_mes,
+  SUM(fpa.visits) AS total_visitas
+FROM fact_poi_activity fpa
+GROUP BY MONTH(fpa.activity_date),nombre_mes
+ORDER BY total_visitas DESC;
+-- ¿Qué meses generan más ingresos?
+SELECT
+  MONTH(fpa.activity_date) AS mes,
+  CASE
+	WHEN MONTH(fpa.activity_date) = 1 THEN 'Enero'
+    WHEN MONTH(fpa.activity_date) = 2 THEN 'Febrero'
+    WHEN MONTH(fpa.activity_date) = 3 THEN 'Marzo'
+    WHEN MONTH(fpa.activity_date) = 4 THEN 'Abril'
+    WHEN MONTH(fpa.activity_date) = 5 THEN 'Mayo'
+    WHEN MONTH(fpa.activity_date) = 6 THEN 'Junio'
+    WHEN MONTH(fpa.activity_date) = 7 THEN 'Julio'
+    WHEN MONTH(fpa.activity_date) = 8 THEN 'Agosto'
+    WHEN MONTH(fpa.activity_date) = 9 THEN 'Septiembre'
+    WHEN MONTH(fpa.activity_date) = 10 THEN 'Octubre'
+    WHEN MONTH(fpa.activity_date) = 11 THEN 'Noviembre'
+    WHEN MONTH(fpa.activity_date) = 12 THEN 'Diciembre'
+    ELSE 'Fuera del rango'
+  END AS nombre_mes,
+  SUM(fpa.revenue_eur) AS total_ingresos_mensuales
+FROM fact_poi_activity fpa
+GROUP BY MONTH(fpa.activity_date),nombre_mes
+ORDER BY total_ingresos_mensuales DESC;
+
+-- ¿Existen meses “débiles” en actividad o revenue?
+SELECT
+  MONTH(activity_date) AS mes,
+  SUM(visits) AS total_visitas,
+  SUM(revenue_eur) AS total_ingresos
+FROM fact_poi_activity
+GROUP BY MONTH(activity_date)
+ORDER BY total_visitas ASC;
+
+-- ¿Qué ciudades están por encima de la media de visitas por POI?
+WITH visitas_por_ciudad AS (
+  SELECT
+    c.city_id,
+    c.city_name,
+    AVG(fpa.visits) AS visitas_media
+  FROM fact_poi_activity fpa
+  INNER JOIN dim_poi p ON fpa.poi_id = p.poi_id
+  INNER JOIN dim_city c ON p.city_id = c.city_id
+  GROUP BY c.city_id, c.city_name
+),
+media_global AS (
+  SELECT AVG(visitas_media) AS media
+  FROM visitas_por_ciudad
+)
+SELECT * FROM visitas_por_ciudad
+WHERE visitas_media > (SELECT media FROM media_global)
+ORDER BY visitas_media DESC;
