@@ -55,22 +55,24 @@ SELECT COUNT(*) FROM fact_poi_activity;
 SELECT COUNT(*) AS  pois_sin_actividad FROM dim_poi dm
 LEFT JOIN fact_poi_activity fpa ON dm.poi_id = fpa.poi_id
 WHERE fpa.poi_id IS NULL;
--- Para este proyecto, hay 306564 pois sin actividad relacionada
+-- Para este proyecto, hay 306564 pois sin actividad relacionada, en este caso es normal al haberlo limitado a 5000.
+-- Ingisht: La mayoría de los POIs no generan actividad registrada, lo que indica que solo una parte de los POIs están siendo utilizada.
 
 -- ¿Hay POIs sin categoría o sin subcategoría?
 SELECT * FROM pois_22_12
 WHERE category IS NULL OR subcategory IS NULL;
--- Hay 4 POIs en total que no contienen categoria o subcategoria ya que estan practicamente vacios
+-- Hay 4 POIs en total que no contienen categoria o subcategoria ya que estan practicamente vacios, aportando solo información del pais y su ciudad
 
 -- Realizamos esta query pora consultar en la tabla de POIs normalizada "dim_poi" si se han normalizado todos y tienen una subcategoria asignada
 SELECT COUNT(*) FROM dim_poi
 WHERE subcategory_id IS NULL;
--- Los POIs sin subcategoría solo existen en el CSV, no en la tabla normalizada ya que da 0.
+-- Da como resultado 0, ya que todos han sido practicamente normalizados y asignados con su subcategoria correspondiente, relacionada con la categoria
 
 -- Existen valores nulos en métricas clave (visits, revenue, rating)?
 SELECT COUNT(*) FROM fact_poi_activity
 WHERE visits IS NULL OR revenue_eur IS NULL OR avg_rating IS NULL;
 -- El resultado da 0, por lo que en esa tabla no hay ninguna con valores clave nulos
+-- Insight: Las métricas clave de la tabla de hechos están completas, lo que indica buena calidad del dato y permite calcular KPIs sin errores por valores nulos.
 
 /*
 -----------------------------------------------------
@@ -108,6 +110,8 @@ GROUP BY p.name
 ORDER BY num_POIs DESC
 LIMIT 10;
 -- El resultado nos muestra los 10 paises con más POIs ordenados en un ranking
+-- Insgiht: Permite saber que paises contienen más POIs para utilizarlos en beneficio del negocio,
+-- facilitando la priorización geográfica para expansión, inversión o análisis de mercado.
 
 -- ¿Qué ciudades tienen mayor número de POIs?
 SELECT 	c.city_name, 
@@ -124,11 +128,12 @@ ORDER BY num_pois DESC
 LIMIT 10;
 -- En este caso ocurre algo extraño, aparece que hay una fila 'NULL' con 39K Pois, pero tras hacer varias comprobaciones no doy con la razón de porque aparecen.
 -- En todo caso, abajo aparecen las ciudades ordenadas por el numero de POIs que tiene cada una y su ranking equivalente.
+-- Insgiht: Permite analizar las ciudades con mayor número de POIs para una mejor inversión de mercado o expansión de datos en cuanto a POIs.
 
 -- Realizo esta query para comprobar el resultado anterior
 SELECT COUNT(*) FROM dim_city
 WHERE city_name IS NULL;
--- En esta query nos dice que hay 0 ciudades con city_name nulo.
+-- En esta query nos dice que hay 0 ciudades con city_name nulo, lo que da lugar a una incoherencia.
 
 -- ¿Qué ciudades generan más visitas totales?
 SELECT 	c.city_name AS ciudad,
@@ -140,6 +145,7 @@ GROUP BY p.city_id, c.city_name
 ORDER BY total_visitas DESC
 LIMIT 10;
 -- Barcelona y Madrid son las ciudades que más visitas generan.
+-- Insight: permite identificar que ciudades generan más visitas en total para mejorar la inversión y el análisis de mercado.
 
 -- ¿Qué ciudades generan más ingresos totales?
 SELECT
@@ -152,7 +158,7 @@ GROUP BY p.city_id, c.city_name
 ORDER BY ingresos_totales DESC
 LIMIT 10;
 -- Madrid y Barcelona también son las ciudades que mas ingreso mensual generan
-
+-- Insight: permite identificar que ciudades generan más ingresos totales para mejorar la inversión.
 /*
 -----------------------------------------------------
 BLOQUE 4 — Categorías y tipologías
@@ -173,6 +179,7 @@ INNER JOIN dim_poi dp ON ds.subcategory_id = dp.subcategory_id
 GROUP BY dc.category_name
 ORDER BY num_POIs DESC;
 -- Las categorias que contienen más POIs son 'Religioso', 'Historico' y 'Cultural'
+-- Insight: permite medir la composición y distribución del catálogo de POIs
 
 -- ¿Qué categorías concentran más visitas en total?
 SELECT 	dc.category_name, 
@@ -185,6 +192,7 @@ INNER JOIN fact_poi_activity fpa ON dp.poi_id = fpa.poi_id
 GROUP BY dc.category_name
 ORDER BY num_visitas DESC;
 -- Las categorias de 'Cultural', 'Monumento' y 'Religioso' son las que concentran más visitas en total
+-- Insight: permite medir la demanda por usuario por cada tipo de POI según su categoria.
 
 -- ¿Qué categorías generan más ingresos totales?
 SELECT 	dc.category_name, 
@@ -197,6 +205,7 @@ INNER JOIN fact_poi_activity fpa ON dp.poi_id = fpa.poi_id
 GROUP BY dc.category_name
 ORDER BY total_ingresos DESC;
 -- Las categorias de 'Cultural', 'Religioso' y 'Monumento' son las que tienen mas ingresos totales
+-- Insight: permite medir el rendimiento económico de cada categoría en base a los ingresos totales que tiene.
 
 -- ¿Qué categorías tienen mejor valoración media?
 SELECT 	dc.category_name, 
@@ -209,6 +218,7 @@ INNER JOIN fact_poi_activity fpa ON dp.poi_id = fpa.poi_id
 GROUP BY dc.category_name
 ORDER BY valoracion_media DESC;
 -- Las categorias con mejor valoracion media son 'Puente', 'Administrativo' y 'Parque'
+-- Insight: permite medir el patrón de valoración según los usuarios, aportando información relevante en cuanto a la calidad del POI.
 
 -- ¿Existen categorías con muchas visitas pero bajo rating medio?
 -- Para este ejercicio supondremos que consideramos bajo un rating por debajo de 3.75 de valoracion media
@@ -225,7 +235,7 @@ INNER JOIN fact_poi_activity fpa ON dp.poi_id = fpa.poi_id
 GROUP BY dc.category_id, dc.category_name
 HAVING AVG(fpa.avg_rating) < 3.75 AND SUM(fpa.visits) >= 10000
 ORDER BY num_visitas DESC;
--- Existen solo 3 categorias con bajo rating pero muchas visitas
+-- Insight: permite identificar que categorias no tienen equilibrio entre valoracion y visitas, para aumentar su eficacia.
 
 /*
 -----------------------------------------------------
@@ -246,6 +256,7 @@ FROM fact_poi_activity fpa
 GROUP BY MONTH(fpa.activity_date)
 ORDER BY mes;
 -- Esta query nos da como resultado el total de visitas de cada mes
+-- Insight: permite medir el rendimiento mensual de las visitas por cada mes del año, indicando temporadas de calidad o analisis de mercado.
 
 -- ¿Qué meses concentran más visitas?
 SELECT 	MONTH(fpa.activity_date) AS mes,
@@ -275,6 +286,7 @@ FROM fact_poi_activity fpa
 GROUP BY MONTH(fpa.activity_date),nombre_mes
 ORDER BY total_visitas DESC;
 -- Nos da como resultado los meses ordenados por el total de visitas de cada uno
+-- Insight: permite identificar que meses son mejores para realizar campañas según su total de visitas.
 
 -- ¿Qué meses generan más ingresos?
 SELECT 	MONTH(fpa.activity_date) AS mes,
@@ -304,6 +316,7 @@ FROM fact_poi_activity fpa
 GROUP BY MONTH(fpa.activity_date),nombre_mes
 ORDER BY total_ingresos_mensuales DESC;
 -- La query anterior nos da como resultado todos los meses de año ordenados por el total de ingresos
+-- Insight: permite identificar que meses son mejores para realizar inversiones según su total de ingresos.
 
 -- ¿Existen meses “débiles” en actividad o revenue?
 SELECT
@@ -313,7 +326,7 @@ SELECT
 FROM fact_poi_activity
 GROUP BY MONTH(activity_date)
 ORDER BY total_visitas ASC;
--- Todos mantienen métricas y valores equilibrados entre si
+-- Insight: esta query permite identificar si hay algún mes irregular para posteriormente analizarlo según los POIs asociados.
 
 /*
 -----------------------------------------------------
@@ -344,7 +357,9 @@ media_global AS (
 SELECT * FROM visitas_por_ciudad
 WHERE visitas_media > (SELECT media FROM media_global)
 ORDER BY visitas_media DESC;
--- Anzuola es la ciudad con más media de visitas, seguida por Sacecorbo
+-- Insight: Identifica las ciudades con rendimiento superior a la media en términos de visitas promedio, 
+-- “ciudades top” donde la demanda/atracción por POI es relativamente alta.
+
 
 -- Ranking de ciudades por visitas dentro de cada pais (solo España por el momento)
 SELECT
@@ -363,6 +378,7 @@ GROUP BY co.country_name, ci.city_name
 ORDER BY co.country_name, rank_in_country;
 -- El resultado solo abarca para España ya que los 5000 registros artificiales fueron unicamente para este mismo
 -- De no ser así, tambien saldrian varios top 1,2,3 etc de varios paises.
+-- Insight: Identifica las ciudades líderes en generación de visitas dentro de cada país, permitiendo comparar el rendimiento entre ciudades del mismo mercado.
 
 -- Calcular el beneficio por visita de cada categoria
 SELECT
@@ -379,7 +395,7 @@ JOIN dim_subcategory ds ON dp.subcategory_id = ds.subcategory_id
 JOIN dim_category dc ON ds.category_id = dc.category_id
 GROUP BY dc.category_name
 ORDER BY revenue_per_visit DESC;
-
+-- Insight: Identifica qué categorías generan más ingresos por cada visita, cuáles son más eficientes y rentables independientemente del volumen.
 /*
 -----------------------------------------------------
 BLOQUE 7 — Funciones reutilizables
@@ -422,7 +438,9 @@ FROM (
   LIMIT 10
 ) AS t
 ORDER BY num_pois DESC;
-
+-- Insgiht: Identifica las ciudades con mayor concentración de POIs (oferta), 
+-- lo que ayuda a detectar “hubs” geográficos donde hay mayor presencia de puntos de interés.
+-- Un 'Hub' es un punto central de concentración
 /* ------------------------------------- */
 
 DELIMITER $$
@@ -458,6 +476,7 @@ WHERE c.country_id IN (
   GROUP BY dc.country_id
 )
 ORDER BY num_pois DESC;
+-- Insgiht: Identifica qué países concentran más POIs
 
 /*
 -----------------------------------------------------
@@ -481,10 +500,13 @@ JOIN dim_poi dp ON dp.city_id = ci.city_id
 LEFT JOIN fact_poi_activity fpa ON fpa.poi_id = dp.poi_id
 GROUP BY co.country_name, ci.city_name;
 
+-- Realizamos el SELECT sin utilizar el IDE, ya que al estar limitado a España, solo apareceran datos para ciudades españolas
 SELECT *
 FROM vw_city_kpis
 ORDER BY total_revenue DESC
 LIMIT 20;
+-- Insight: Consolida en una sola tabla de reporting los KPIs clave por ciudad, 
+-- permitiendo comparar ciudades de forma rápida y detectar cuáles destacan en rendimiento.
 
 -- Vista de top categorias por ciudad
 CREATE OR REPLACE VIEW vw_city_category_kpis AS
@@ -511,6 +533,21 @@ SELECT *
 FROM vw_city_category_kpis
 ORDER BY total_revenue DESC
 LIMIT 20;
+-- Insight: Consolida en una sola tabla de reporting los KPIs clave de las categorias predominantes por ciudad, 
+-- permitiendo comparar categorias de varais ciudades entre si para ver cual tiene mejor rendimiento.
+
+/* 
+Explicación del EER:
+La base de datos está construida con un enfoque analítico tipo modelo estrella, po la cual contiene:
+- 1 Tabla de hechos (la cual guarda métricas): fact_poi_activity
+- 5 Tablas de dimensiones: guardan el contexto de los datos
+- 1 Tabla de staging: contiene los datos del CSV en bruto/crudo y se usa explicitamente para poblar las
+tablas artificiales de dimensiones.
+
+Este tipo de base de datos me permite evitar duplicidad de datos, mantener una integridad referencial y hacer
+análisis con JOINs limpios y consistentes con los datos proporcionados.
+
+*/
 
 /*
 -----------------------------------------------------
